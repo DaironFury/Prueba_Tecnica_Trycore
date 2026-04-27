@@ -1,0 +1,52 @@
+# =====================================================================
+# EVM Dashboard — .gitignore raíz
+# =====================================================================
+
+# Variables de entorno (nunca deben commitearse)
+.env
+.env.local
+.env.*.local
+
+# ── Python / Backend ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.so
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Cobertura y reportes de pytest
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.pytest_cache/
+
+# Caches de herramientas
+.ruff_cache/
+.mypy_cache/
+
+# ── Node / Frontend ───────────────────────────────────────────────
+node_modules/
+frontend/dist/
+frontend/dist-ssr/
+*.local
+
+# ── Docker ────────────────────────────────────────────────────────
+# Los volúmenes son gestionados por Docker, no por git
+
+# ── IDEs ──────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── Sistema operativo ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini

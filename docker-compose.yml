@@ -1,0 +1,90 @@
+# =====================================================================
+# EVM Dashboard — stack local y de producción simple
+# ---------------------------------------------------------------------
+# Servicios:
+#   - database : PostgreSQL 16 con volumen persistente + scripts de init
+#   - api      : backend FastAPI, depende de que database esté healthy
+#
+# Uso:
+#   cp .env.example .env       # ajusta credenciales y puertos
+#   docker compose up -d       # construye e inicia el stack
+#   docker compose logs -f api # sigue los logs de la API
+#   docker compose down        # detiene contenedores (datos persisten)
+#   docker compose down -v     # detiene Y borra el volumen de la base de datos
+# =====================================================================
+
+name: evm-dashboard
+
+services:
+  database:
+    image: postgres:16.4-alpine
+    container_name: evm-database
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-evm_db}
+      POSTGRES_USER: ${POSTGRES_USER:-evm_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-evm_pass}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-evm_user} -d ${POSTGRES_DB:-evm_db}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - evm-net
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: evm-dashboard-api:local
+    container_name: evm-api
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # El segmento de host es el nombre del servicio de compose `database`, NUNCA localhost.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-evm_user}:${POSTGRES_PASSWORD:-evm_pass}@database:5432/${POSTGRES_DB:-evm_db}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost,http://localhost:5173}
+      HOST: 0.0.0.0
+      PORT: 8000
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - evm-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: evm-dashboard-frontend:local
+    container_name: evm-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - api
+    networks:
+      - evm-net
+
+volumes:
+  postgres_data:
+    name: evm_postgres_data
+
+networks:
+  evm-net:
+    name: evm-net
+    driver: bridge
