@@ -1,0 +1,66 @@
+---
+description: Visión general del proyecto EVM Dashboard – stack, arquitectura y convenciones clave
+alwaysApply: true
+---
+
+# EVM Dashboard – Regla General del Proyecto
+
+## Stack tecnológico
+
+| Capa | Tecnología |
+|------|-----------|
+| Backend | Python 3.12 · FastAPI · SQLAlchemy (async) · PostgreSQL · Pydantic v2 |
+| Frontend | React 18 · TypeScript 5 · Vite · React Router v6 · Recharts · Axios |
+| Estilos | CSS Modules (colocados junto al componente) |
+| Linting | Ruff (backend) · ESLint + Prettier (frontend) |
+| Tests | pytest-asyncio (backend) · cobertura mínima 80 % |
+| Infra | Docker · Docker Compose · Nginx (proxy frontend) |
+
+## Arquitectura backend (capas estrictas)
+
+```
+API Router → Service → Repository → ORM (SQLAlchemy) → PostgreSQL
+                ↓
+           Domain (EVM Calculator – sin I/O)
+```
+
+- **`app/api/v1/routers/`** – sólo validación HTTP y delegación al servicio.
+- **`app/services/`** – orquestación de lógica de negocio; sin SQLAlchemy directo.
+- **`app/persistence/repositories/`** – única capa que toca `AsyncSession`.
+- **`app/domain/`** – lógica pura (sin FastAPI, sin SQLAlchemy, sin E/S).
+- **`app/domain/evm_calculator.py`** debe permanecer 100 % libre de dependencias externas.
+
+## Convenciones backend
+
+- Línea máxima: **100 caracteres**. Comillas **dobles**. Estilo Ruff.
+- Nombres en `snake_case`; clases en `PascalCase`; constantes en `UPPER_SNAKE_CASE`.
+- Toda función pública lleva docstring explicando el *por qué*, no el *qué*.
+- Dividir por cero y valores indefinidos retornan `None`; nunca `Infinity` ni `NaN`.
+- Los indicadores EVM del proyecto se agregan sumando valores absolutos; **nunca** promediando índices.
+- Secrets únicamente vía `app/config.py` (`pydantic-settings`); nunca `os.environ` directo.
+
+## Convenciones frontend
+
+- Componentes funcionales con hooks; **sin** class components.
+- Estilos en archivo `.module.css` con el mismo nombre que el componente.
+- Llamadas HTTP centralizadas en `src/api/`; los componentes no usan Axios directamente.
+- Tipos en `src/types/`; nunca `any` implícito.
+- Formateo de moneda/porcentaje en `src/utils/format.ts`.
+
+## Reglas transversales
+
+- No comentarios que sólo narren lo que el código hace; comentar el *porqué* no obvio.
+- No agregar dependencias sin justificación explícita.
+- Toda lógica nueva de dominio EVM debe tener test unitario en `backend/tests/unit/`.
+- El endpoint `/health` **no** debe tocar la base de datos; `/health/ready` sí lo hace.
+
+## Convenciones para commits
+
+- **Nunca** realizar un commit sin que el usuario lo solicite explícitamente.
+- Todos los mensajes de commit deben estar escritos en **español**.
+- Analizar cuidadosamente los cambios de cada archivo antes de preparar el commit.
+- Dividir los cambios en **varios commits lógicos y cohesivos**; nunca agrupar todo en uno solo.
+- Cada mensaje de commit debe ser:
+  - Claro y conciso.
+  - Breve, pero suficientemente descriptivo y detallado.
+  - Explicar **qué** cambios se realizaron y **cuál es su objetivo**.
